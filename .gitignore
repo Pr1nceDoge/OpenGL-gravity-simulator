@@ -1,0 +1,15 @@
+*
+!.gitignore
+
+!/.vscode/
+!/.vscode/**
+
+!/include/
+!/include/utility_libs/
+!/include/utility_libs/**
+
+!/src/
+!/src/code/
+!/src/code/main.cpp
+!/src/code/shaders/
+!/src/code/shaders/*
