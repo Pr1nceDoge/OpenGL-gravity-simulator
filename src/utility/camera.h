@@ -25,26 +25,15 @@ private:
         cameraUp = glm::normalize(glm::cross(cameraRight, cameraFront));
     }
 
-    static inline float cameraYaw = 90.0f, cameraPitch = 0.0f;
-public:
-    static inline glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, -25.0f);
-
-    static inline float cameraSpeed = 50.0f;
-    static inline float scrollSpeed = 25.0f;
-    static inline float sensitivity = 0.15f;
-
-    static glm::mat4 getViewMatrix() {
-        return glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
-    }
-
-    static glm::vec3 getCameraPosition() {
-        return cameraPosition;
-    }
-
-    static void processMouseInput(double xOffset, double yOffset) {
+    static void processCursorInput(GLFWwindow*, double xOffset, double yOffset) {
         static bool firstMouse = true;
         static float lastX, lastY;
         
+        if(cursorEnabled) {
+            firstMouse = true;
+            return;
+        }
+
         if(firstMouse) {
             lastX = xOffset;
             lastY = yOffset;
@@ -59,14 +48,32 @@ public:
         cameraYaw -= xPos;
         cameraPitch += yPos;
 
-        if(cameraPitch > 89.0f) {
-            cameraPitch = 89.0f;
-        }
-        else if(cameraPitch < -89.0f) {
-            cameraPitch = -89.0f;
-        }
+        cameraPitch = std::min(cameraPitch, 89.0f);
+        cameraPitch = std::max(cameraPitch, -89.0f);
 
         updateCameraVectors();
+    }
+
+    static void processScrollInput(GLFWwindow*, double, double yOffset) {
+        cameraPosition += cameraFront * scrollSpeed * (float)yOffset;
+    }
+
+    static inline bool cursorEnabled = false;
+
+    static inline float cameraYaw = 90.0f, cameraPitch = 0.0f;
+public:
+    static inline glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, -100.0f);
+
+    static inline float cameraSpeed = 50.0f;
+    static inline float scrollSpeed = 25.0f;
+    static inline float sensitivity = 0.15f;
+
+    static glm::mat4 getViewMatrix() {
+        return glm::lookAt(cameraPosition, cameraPosition + cameraFront, cameraUp);
+    }
+
+    static glm::vec3 getCameraPosition() {
+        return cameraPosition;
     }
 
     static void processKeyboardInput(GLFWwindow *window, float deltaTime) {
@@ -95,8 +102,23 @@ public:
         }
     }
 
-    static void processScrollInput(double yOffset) {
-        cameraPosition += cameraFront * scrollSpeed * (float)yOffset;
+    static void toogleCursor(GLFWwindow* window) {
+        cursorEnabled = !cursorEnabled;
+        
+        if(cursorEnabled) {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+        else {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+    }
+
+    static void processCursorCallback(GLFWwindow* window) {
+        cursorEnabled ? glfwSetCursorPosCallback(window, nullptr) : glfwSetCursorPosCallback(window, processCursorInput);
+    }
+
+    static void processScrollCallback(GLFWwindow* window) {
+        glfwSetScrollCallback(window, processScrollInput);
     }
 };
 

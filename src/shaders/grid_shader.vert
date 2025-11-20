@@ -12,7 +12,7 @@ uniform float objectMasses[MAX_OBJECTS];
 
 float schwarzschildWell(float r, float mass) {
     mass *= 10.0;
-    float softening = 15.0;
+    float softening = 20.0;
     float k = 0.4;
     float p = 0.5;
     return k * mass / pow(r*r + softening*softening, p);

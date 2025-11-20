@@ -1,4 +1,3 @@
-#define GRAVITY 100.0f // tweaking this value will result in different interaction between bodies!
 #include <iostream>
 #include <vector>
 #define _USE_MATH_DEFINES
@@ -8,9 +7,9 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <utility_libs/window.h>
-#include <utility_libs/shader.h>
-#include <utility_libs/camera.h>
+#include "utility/window.h"
+#include "utility/shader.h"
+#include "utility/camera.h"
 
 class object {
 private:
@@ -24,7 +23,7 @@ private:
     const int sectors = 64;
 public:
     glm::vec3 position{};
-    glm::vec3 acceleration{}; //HAS TO BE SET TO ZERO, or else, objects will explode
+    glm::vec3 acceleration{};
     glm::vec3 velocity{};
 
     const float mass;
@@ -233,6 +232,7 @@ private:
     static inline std::vector<object*> objectPointers;
     static inline std::vector<object*> stars;
 
+    static constexpr float GRAVITY = 100.0f;
     static constexpr float EPS = 0.01f;
 public:
     template<typename... Args>
@@ -284,44 +284,31 @@ public:
 };
 
 constexpr int WINDOW_WIDTH = 800;
-constexpr int WINDOW_HEIGHT = 600;
+constexpr int WINDOW_HEIGTH = 600;
 
-void mousePosCallback(GLFWwindow *window, double xOffset, double yOffset);
-void scrollCallback(GLFWwindow *window, double xOffset, double yOffset);
+void checkCursor(GLFWwindow *window);
 float getDeltaTime();
 int main() {
-    window myWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Planetary simulation");
-    glfwSetInputMode(myWindow.currentWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
+    window myWindow(WINDOW_WIDTH, WINDOW_HEIGTH, "Planetary simulation");
+    glfwSetInputMode(myWindow.currentWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    camera::cameraSpeed = 25.0f;
-    camera::scrollSpeed = 10.0f;
+    camera::cameraSpeed = 75.0f;
+    camera::scrollSpeed = 32.5f;
+    
+    camera::processCursorCallback(myWindow.currentWindow);
+    camera::processScrollCallback(myWindow.currentWindow);
 
-    glfwSetCursorPosCallback(myWindow.currentWindow, mousePosCallback);
-    glfwSetScrollCallback(myWindow.currentWindow, scrollCallback);
+    glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)myWindow.getWidth() / (float)myWindow.getHeigth(), 0.1f, 75000.0f);
 
-    glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 75000.0f);
-
-    shader defaultShader("src/code/shaders/default_shader.vert", "src/code/shaders/default_shader.frag"); // for the planets
-    shader lightingShader("src/code/shaders/lighting_shader.vert", "src/code/shaders/lighting_shader.frag"); // for the stars
-    shader gridShader("src/code/shaders/grid_shader.vert", "src/code/shaders/grid_shader.frag"); // for the grid
+    shader defaultShader("src/shaders/default_shader.vert", "src/shaders/default_shader.frag"); // for the planets
+    shader lightingShader("src/shaders/lighting_shader.vert", "src/shaders/lighting_shader.frag"); // for the stars
+    shader gridShader("src/shaders/grid_shader.vert", "src/shaders/grid_shader.frag"); // for the grid
 
     grid newGrid(200, 5.0f, gridShader);
-
-    /*example:
-    physicsEngine::addObject(
-        glm::vec3(100.0f, 0.0f, 0.0f), -> initail position
-        glm::vec3(0.0f, 0.0f, 10.0f), -> inital velocity
-        25.0f, -> mass
-        0.5f, -> density
-        glm::vec3(0.27f, 0.43f, 0.63f),
-        false, -> true only if the object is a star
-        lightingShader -> preferably, use the lighting shader for planets
-    );
-    */
 
     physicsEngine::addObject(
         glm::vec3(100.0f, 0.0f, 0.0f),
@@ -368,7 +355,7 @@ int main() {
         glm::vec3(0.0f),
         500.0f,
         0.05f,
-        glm::vec3(0.94f,0.34f,0.07f),
+        glm::vec3(1.0f, 0.9f, 0.6f),
         true,
         defaultShader
     );
@@ -380,6 +367,8 @@ int main() {
         float deltaTime = getDeltaTime();
 
         camera::processKeyboardInput(myWindow.currentWindow, deltaTime);
+        checkCursor(myWindow.currentWindow);
+
         glm::mat4 view = camera::getViewMatrix();
 
         physicsEngine::updatePhysics(deltaTime);
@@ -395,12 +384,14 @@ int main() {
     return 0;
 }
 
-void mousePosCallback(GLFWwindow *window, double xOffset, double yOffset) {
-    camera::processMouseInput(xOffset, yOffset);
-}
+void checkCursor(GLFWwindow *window) {
+    static bool keyPressed = false;
+    bool escapeDown = glfwGetKey(window, GLFW_KEY_ESCAPE);
 
-void scrollCallback(GLFWwindow *window, double xOffset, double yOffset) {
-    camera::processScrollInput(yOffset);
+    if(escapeDown && !keyPressed) {
+        camera::toogleCursor(window);
+    }
+    keyPressed = escapeDown;
 }
 
 float getDeltaTime() {

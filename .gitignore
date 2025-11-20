@@ -9,7 +9,8 @@
 !/include/utility_libs/**
 
 !/src/
-!/src/code/
-!/src/code/main.cpp
-!/src/code/shaders/
-!/src/code/shaders/*
+!/src/main.cpp
+!/src/utility/
+!/src/utility/**
+!/src/shaders/
+!/src/shaders/**
