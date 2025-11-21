@@ -16,8 +16,9 @@ class window {
     }
 
     int width, heigth;
-    public:
+    
     GLFWwindow *currentWindow;
+    public:
     
     window(int width, int heigth, const char *title) :  width(width), heigth(heigth) {
         glfwInit();
@@ -50,10 +51,11 @@ class window {
     void swapBuffers() {
         glfwSwapBuffers(currentWindow);
     }
+
+    GLFWwindow* getwindow() { return this->currentWindow; }
     
     int getWidth() { return this->width; };
     int getHeigth() { return this->heigth; }
 };
-
 
 #endif
