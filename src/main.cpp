@@ -298,11 +298,9 @@ int main() {
 
     camera::cameraSpeed = 75.0f;
     camera::scrollSpeed = 32.5f;
-    
+
     camera::processCursorCallback(myWindow.getwindow());
     camera::processScrollCallback(myWindow.getwindow());
-
-    glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)myWindow.getWidth() / (float)myWindow.getHeigth(), 0.1f, 75000.0f);
 
     shader defaultShader("src/shaders/default_shader.vert", "src/shaders/default_shader.frag"); // for the planets
     shader lightingShader("src/shaders/lighting_shader.vert", "src/shaders/lighting_shader.frag"); // for the stars
@@ -370,6 +368,7 @@ int main() {
         checkCursor(myWindow.getwindow());
 
         glm::mat4 view = camera::getViewMatrix();
+        glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)myWindow.getWidth() / (float)myWindow.getHeigth(), 0.1f, 75000.0f);
 
         physicsEngine::updatePhysics(deltaTime);
         for(auto &obj : physicsEngine::getObjects()) {
