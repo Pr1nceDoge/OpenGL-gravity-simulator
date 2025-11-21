@@ -290,7 +290,7 @@ void checkCursor(GLFWwindow *window);
 float getDeltaTime();
 int main() {
     window myWindow(WINDOW_WIDTH, WINDOW_HEIGTH, "Planetary simulation");
-    glfwSetInputMode(myWindow.currentWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(myWindow.getwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glEnable(GL_DEPTH_TEST);
 
     glEnable(GL_BLEND);
@@ -299,8 +299,8 @@ int main() {
     camera::cameraSpeed = 75.0f;
     camera::scrollSpeed = 32.5f;
     
-    camera::processCursorCallback(myWindow.currentWindow);
-    camera::processScrollCallback(myWindow.currentWindow);
+    camera::processCursorCallback(myWindow.getwindow());
+    camera::processScrollCallback(myWindow.getwindow());
 
     glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)myWindow.getWidth() / (float)myWindow.getHeigth(), 0.1f, 75000.0f);
 
@@ -366,8 +366,8 @@ int main() {
 
         float deltaTime = getDeltaTime();
 
-        camera::processKeyboardInput(myWindow.currentWindow, deltaTime);
-        checkCursor(myWindow.currentWindow);
+        camera::processKeyboardInput(myWindow.getwindow(), deltaTime);
+        checkCursor(myWindow.getwindow());
 
         glm::mat4 view = camera::getViewMatrix();
 
