@@ -1,15 +1,14 @@
+#include "utilities/window.hpp"
+#include "utilities/shader.hpp"
+#include "utilities/camera.hpp"
 #include <iostream>
 #include <vector>
-#define _USE_MATH_DEFINES
-#include <cmath>
 #include <memory>
+#include <cmath>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "utilities/window.hpp"
-#include "utilities/shader.hpp"
-#include "utilities/camera.hpp"
 
 class object {
 private:
@@ -110,13 +109,12 @@ public:
 
         objectShader.setVec3("color", color);
         for(int i = 0; i < stars.size(); i++) {
-            std::string baseLine = "pointLights[" + std::to_string(i) + ']';
+            if(i >= 4) break;
+            std::string baseLine = "pointLights[" + std::to_string(i) + "]";
 
             objectShader.setVec3((baseLine + ".position").c_str(), stars[i]->position);
             objectShader.setVec3((baseLine + ".ambient").c_str(), stars[i]->color * 0.1f);
             objectShader.setVec3((baseLine + ".diffuse").c_str(), glm::vec3(0.5f));
-
-            if(i >= 4) break;
         }
 
         glBindVertexArray(VAO);
@@ -212,8 +210,8 @@ public:
         
         gridShader.setInt("objectCount", objects.size());
         for(int i = 0; i < objects.size(); i++) {
-            gridShader.setVec3(("objectPositions[" + std::to_string(i) + ']').c_str(), objects[i]->position);
-            gridShader.setFloat(("objectMasses[" + std::to_string(i) + ']').c_str(), objects[i]->mass);
+            gridShader.setVec3(("objectPositions[" + std::to_string(i) + "]").c_str(), objects[i]->position);
+            gridShader.setFloat(("objectMasses[" + std::to_string(i) + "]").c_str(), objects[i]->mass);
         }
 
         glBindVertexArray(VAO);
@@ -223,10 +221,11 @@ public:
     ~grid() {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
+        glDeleteBuffers(1, &EBO);
     }
 };
 
-class physicsEngine {
+class physics {
 private:
     static inline std::vector<std::unique_ptr<object>> objects;
     static inline std::vector<object*> objectPointers;
@@ -258,18 +257,22 @@ public:
         return stars; 
     }
 
+    static void clearObjects() {
+        objects.clear();
+    }
+
     static void updatePhysics(const float &deltaTime) {
         for(size_t i = 0; i < objects.size(); i++) {
-
             for(size_t j = i + 1; j < objects.size(); j++) {
                 glm::vec3 direction = objects[j]->position - objects[i]->position;
 
-                float distance = glm::dot(direction, direction) + EPS * EPS;
-                if(distance < 0.01f) continue;
+                float distanceSquared = glm::dot(direction, direction) + EPS * EPS;
+                const float minDistance = 0.1f;
+                if(distanceSquared < minDistance * minDistance) continue;
 
-                float forceMagnitude = GRAVITY * (objects[j]->mass * objects[i]->mass) / distance;
+                float forceMagnitude = GRAVITY * (objects[j]->mass * objects[i]->mass) / distanceSquared;
 
-                glm::vec3 directionNormalized(glm::normalize(direction));
+                glm::vec3 directionNormalized = glm::normalize(direction);
                 glm::vec3 force = forceMagnitude * directionNormalized;
 
                 objects[i]->applyForce(force);
@@ -277,7 +280,7 @@ public:
             }
         }
 
-        for (auto& obj : objects) {
+        for(auto& obj : objects) {
             obj->updatePosition(deltaTime);
         }
     }
@@ -290,96 +293,102 @@ void checkCursor(GLFWwindow *window);
 float getDeltaTime();
 int main() {
     window myWindow(WINDOW_WIDTH, WINDOW_HEIGTH, "Planetary simulation");
-    glfwSetInputMode(myWindow.getwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glEnable(GL_DEPTH_TEST);
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    {
+        glfwSetInputMode(myWindow.getwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        glEnable(GL_DEPTH_TEST);
 
-    camera::cameraSpeed = 75.0f;
-    camera::scrollSpeed = 32.5f;
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    camera::processCursorCallback(myWindow.getwindow());
-    camera::processScrollCallback(myWindow.getwindow());
+        camera::cameraSpeed = 75.0f;
+        camera::scrollSpeed = 32.5f;
 
-    shader defaultShader("src/shaders/default_shader.vert", "src/shaders/default_shader.frag"); // for the planets
-    shader lightingShader("src/shaders/lighting_shader.vert", "src/shaders/lighting_shader.frag"); // for the stars
-    shader gridShader("src/shaders/grid_shader.vert", "src/shaders/grid_shader.frag"); // for the grid
+        camera::processCursorCallback(myWindow.getwindow());
+        camera::processScrollCallback(myWindow.getwindow());
 
-    grid newGrid(200, 5.0f, gridShader);
+        shader defaultShader("src/shaders/default_shader.vert", "src/shaders/default_shader.frag"); // for the planets
+        shader lightingShader("src/shaders/lighting_shader.vert", "src/shaders/lighting_shader.frag"); // for the stars
+        shader gridShader("src/shaders/grid_shader.vert", "src/shaders/grid_shader.frag"); // for the grid
 
-    physicsEngine::addObject(
-        glm::vec3(100.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 15.0f),
-        5.0f,
-        0.5f,
-        glm::vec3(0.54f, 0.89f, 1.0f),
-        false,
-        lightingShader
-    );
+        grid newGrid(200, 2.5f, gridShader);
 
-    physicsEngine::addObject(
-        glm::vec3(-150.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, -20.0f),
-        3.0f,
-        0.1f,
-        glm::vec3(0.94f, 0.34f, 0.07f),
-        false,
-        lightingShader
-    );
+        physics::addObject(
+            glm::vec3(100.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 15.0f),
+            5.0f,
+            0.5f,
+            glm::vec3(0.54f, 0.89f, 1.0f),
+            false,
+            lightingShader
+        );
 
-    physicsEngine::addObject(
-        glm::vec3(250.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 15.0f),
-        10.0f,
-        0.05f,
-        glm::vec3(0.82f, 0.3f, 0.3f),
-        false,
-        lightingShader
-    );
+        physics::addObject(
+            glm::vec3(-150.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, -20.0f),
+            3.0f,
+            0.1f,
+            glm::vec3(0.94f, 0.34f, 0.07f),
+            false,
+            lightingShader
+        );
 
-    physicsEngine::addObject(
-        glm::vec3(275.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 0.0f, 20.0f),
-        0.5f,
-        0.1f,
-        glm::vec3(0.77f ,0.78f ,0.73f),
-        false,
-        lightingShader
-    );
+        physics::addObject(
+            glm::vec3(250.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 15.0f),
+            10.0f,
+            0.05f,
+            glm::vec3(0.82f, 0.3f, 0.3f),
+            false,
+            lightingShader
+        );
 
-    physicsEngine::addObject(
-        glm::vec3(0.0f),
-        glm::vec3(0.0f),
-        500.0f,
-        0.05f,
-        glm::vec3(1.0f, 0.9f, 0.6f),
-        true,
-        defaultShader
-    );
+        physics::addObject(
+            glm::vec3(275.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 20.0f),
+            0.5f,
+            0.1f,
+            glm::vec3(0.77f ,0.78f ,0.73f),
+            false,
+            lightingShader
+        );
 
-    while(!myWindow.windowShouldClose()) {
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        physics::addObject(
+            glm::vec3(0.0f),
+            glm::vec3(0.0f),
+            500.0f,
+            0.05f,
+            glm::vec3(1.0f, 0.9f, 0.6f),
+            true,
+            defaultShader
+        );
 
-        float deltaTime = getDeltaTime();
+        while(!myWindow.windowShouldClose()) {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        camera::processKeyboardInput(myWindow.getwindow(), deltaTime);
-        checkCursor(myWindow.getwindow());
+            float deltaTime = getDeltaTime();
 
-        glm::mat4 view = camera::getViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)myWindow.getWidth() / (float)myWindow.getHeigth(), 0.1f, 75000.0f);
+            camera::processKeyboardInput(myWindow.getwindow(), deltaTime);
+            checkCursor(myWindow.getwindow());
 
-        physicsEngine::updatePhysics(deltaTime);
-        for(auto &obj : physicsEngine::getObjects()) {
-            obj->draw(glm::mat4(1.0f), view, projection, physicsEngine::getStars());
+            glm::mat4 projection = glm::perspective(glm::radians(55.0f), (float)myWindow.getWidth() / (float)myWindow.getHeigth(), 0.1f, 7500.0f);
+            glm::mat4 view = camera::getViewMatrix();
+
+            physics::updatePhysics(deltaTime);
+            for(auto &obj : physics::getObjects()) {
+                obj->draw(glm::mat4(1.0f), view, projection, physics::getStars());
+            }
+            newGrid.draw(glm::mat4(1.0f), view, projection, physics::getObjects());
+
+            myWindow.swapBuffers();
+            glfwPollEvents();
         }
-        newGrid.draw(glm::mat4(1.0f), view, projection, physicsEngine::getObjects());
 
-        myWindow.swapBuffers();
-        glfwPollEvents();
     }
 
+    physics::clearObjects();
+    glfwTerminate();
     return 0;
 }
 
